@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% set status_labels = {'running': 'Fut', 'done': 'Kész', 'error': 'Hiba', 'stopped': 'Leállítva'} %}
+{% block title %}Futások · Lidl Plus{% endblock %}
+
+{% block content %}
+<h1>Futások</h1>
+<p class="sub">A legutóbbi feladatok naplóval együtt. Legfeljebb 50 futás marad meg.</p>
+
+<div class="panel" style="margin-top:0;">
+  {% if jobs %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Indult</th>
+          <th>Feladat</th>
+          <th>Forrás</th>
+          <th>Státusz</th>
+          <th class="num">Időtartam</th>
+          <th class="num">Kód</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td style="white-space:nowrap;">{{ job.started_iso }}</td>
+          <td>{{ job.label }}</td>
+          <td><span class="badge muted">{{ 'Ütemezett' if job.source == 'schedule' else 'Kézi' }}</span></td>
+          <td>
+            <span class="badge {{ 'ok' if job.status == 'done' else 'bad' if job.status == 'error' else 'run' }}">
+              {{ status_labels.get(job.status, job.status) }}
+            </span>
+          </td>
+          <td class="num">{{ job.duration }}</td>
+          <td class="num">{{ job.returncode if job.returncode is not none else '' }}</td>
+          <td class="num"><a class="btn small" href="/jobs/{{ job.id }}/log" target="_blank" rel="noopener">Napló</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Még nem futott feladat. Indíts egyet az <a href="/">áttekintés</a> oldalon.</p>
+  {% endif %}
+</div>
+{% endblock %}

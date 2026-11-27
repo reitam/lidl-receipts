@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Kimutatások · Lidl Plus{% endblock %}
+
+{% block content %}
+<h1>Kimutatások</h1>
+<p class="sub">Jegyzékek és garanciák – a nyugtákból generálva.</p>
+
+<section class="cards three">
+  <div class="card">
+    <h2>📑 Nyugta-jegyzék</h2>
+    <p class="hint" style="font-size:.88rem;">Excel és CSV a nyugtákról, valamint a tételek külön CSV-ben.</p>
+    <div class="btn-row" style="margin-top:10px;">
+      <a class="btn {{ '' if files.index_xlsx else 'disabled' }}" href="/files/index_xlsx">Excel</a>
+      <a class="btn {{ '' if files.index_csv else 'disabled' }}" href="/files/index_csv">Nyugták CSV</a>
+      <a class="btn {{ '' if files.items_csv else 'disabled' }}" href="/files/items_csv">Tételek CSV</a>
+    </div>
+    <form method="post" action="/jobs/start" style="margin-top:12px;">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="export">
+      <button class="btn small" {% if current_job %}disabled{% endif %}>Újragenerálás</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>🛠️ Műszaki garancia</h2>
+    <p class="hint" style="font-size:.88rem;">
+      {{ warranty_active }} aktív / {{ warranty_total }} tétel ·
+      aktív érték {{ warranty_value|ft }}
+    </p>
+    <div class="btn-row" style="margin-top:10px;">
+      <a class="btn primary" href="/reports/warranty">Táblázat</a>
+      <a class="btn {{ '' if files.warranty_xlsx else 'disabled' }}" href="/files/warranty_xlsx">Excel</a>
+    </div>
+    <form method="post" action="/jobs/start" style="margin-top:12px;">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="warranty">
+      <button class="btn small" {% if current_job %}disabled{% endif %}>Újragenerálás</button>
+    </form>
+  </div>
+
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Éves költés</h2>
+    <a class="btn small" href="/receipts">Nyugták szűrése</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Év</th><th class="num">Nyugták</th><th class="num">Összeg</th></tr></thead>
+      <tbody>
+        {% for row in stats.yearly %}
+        <tr>
+          <td>{{ row.year }}</td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.total|ft }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

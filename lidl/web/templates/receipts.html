@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Nyugták · Lidl Plus{% endblock %}
+
+{% block content %}
+<h1>Nyugták</h1>
+<p class="sub">{{ total }} találat{% if q %} a(z) „{{ q }}” keresésre{% endif %}.</p>
+
+<form class="filters" method="get" action="/receipts">
+  <div class="field grow">
+    <label for="q">Keresés</label>
+    <input id="q" type="text" name="q" value="{{ q }}" placeholder="bolt, tétel, cikkszám, nyugtaszám…">
+  </div>
+  <div class="field">
+    <label for="year">Év</label>
+    <select id="year" name="year">
+      <option value="">Mind</option>
+      {% for value in years %}
+      <option value="{{ value }}" {% if year == value|string %}selected{% endif %}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="field">
+    <label for="store">Bolt</label>
+    <select id="store" name="store">
+      <option value="">Mind</option>
+      {% for value in stores %}
+      <option value="{{ value }}" {% if store == value %}selected{% endif %}>{{ value }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn primary" type="submit">Szűrés</button>
+  <a class="btn" href="/receipts">Törlés</a>
+</form>
+
+{% if rows %}
+<div class="panel" style="margin-top:0;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Dátum</th>
+          <th>Bolt</th>
+          <th class="num">Tételek</th>
+          <th class="num">Összeg</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td style="white-space:nowrap;"><a href="/receipts/{{ row.receipt.id }}">{{ row.moment|dt }}</a></td>
+          <td>{{ row.store }}</td>
+          <td class="num">{{ row.item_count }}</td>
+          <td class="num">{{ row.total|ft }}</td>
+          <td class="num">
+            <a class="btn small" href="/receipts/{{ row.receipt.id }}">Megnyitás</a>
+            {% if row.pdf.is_file() %}
+            <a class="btn small" href="/receipts/{{ row.receipt.id }}/pdf">PDF</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if pages > 1 %}
+  <div class="pager">
+    {% if page > 1 %}
+    <a class="btn small" href="{{ request.url.include_query_params(page_no=page - 1) }}">← Előző</a>
+    {% endif %}
+    <span class="hint">{{ page }} / {{ pages }} oldal</span>
+    {% if page < pages %}
+    <a class="btn small" href="{{ request.url.include_query_params(page_no=page + 1) }}">Következő →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% else %}
+<div class="panel empty-state">
+  <h2>Nincs találat</h2>
+  <p>Próbálj más keresőszót, vagy töröld a szűrőket.</p>
+  <a class="btn" href="/receipts">Szűrők törlése</a>
+</div>
+{% endif %}
+{% endblock %}

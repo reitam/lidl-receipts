@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Garancia kimutatás · Lidl Plus{% endblock %}
+
+{% block content %}
+<p class="hint" style="margin-bottom:6px;"><a href="/reports">← Vissza a kimutatásokhoz</a></p>
+<h1>Műszaki garancia</h1>
+<p class="sub">{{ total }} tétel · {{ active_count }} aktív · a vásárlás napja + 3 év.</p>
+
+<div class="filters">
+  <div class="btn-row">
+    <a class="btn small {{ 'primary' if status == 'active' else '' }}" href="/reports/warranty?status=active{% if q %}&q={{ q|urlencode }}{% endif %}">Aktív</a>
+    <a class="btn small {{ 'primary' if status == 'expired' else '' }}" href="/reports/warranty?status=expired{% if q %}&q={{ q|urlencode }}{% endif %}">Lejárt</a>
+    <a class="btn small {{ 'primary' if status == 'all' else '' }}" href="/reports/warranty?status=all{% if q %}&q={{ q|urlencode }}{% endif %}">Mind</a>
+  </div>
+  <form class="filters" method="get" action="/reports/warranty" style="margin:0;">
+    <input type="hidden" name="status" value="{{ status }}">
+    <div class="field grow">
+      <label for="q">Keresés</label>
+      <input id="q" type="text" name="q" value="{{ q }}" placeholder="termék, cikkszám, bolt…">
+    </div>
+    <button class="btn primary" type="submit">Keresés</button>
+  </form>
+  <a class="btn" href="/files/warranty_xlsx">Excel letöltése</a>
+</div>
+
+<div class="panel" style="margin-top:0;">
+  {% if rows %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Vásárlás</th>
+          <th>Bolt</th>
+          <th>Termék a nyugtán</th>
+          <th>Értelmezés</th>
+          <th>Cikkszám</th>
+          <th class="num">Ár</th>
+          <th>Lejárat</th>
+          <th class="num">Nap</th>
+          <th>Státusz</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td style="white-space:nowrap;">{{ row.date|dt("%Y-%m-%d") }}</td>
+          <td>{{ row.store }}</td>
+          <td class="mono">{{ row.original }}</td>
+          <td>{{ row.interpretation }}</td>
+          <td class="mono">{{ row.article_id }}</td>
+          <td class="num">{{ row.price|ft }}</td>
+          <td style="white-space:nowrap;">{{ row.expiry|dt("%Y-%m-%d") }}</td>
+          <td class="num">{{ row.days_left }}</td>
+          <td>
+            <span class="badge {{ 'ok' if row.status == 'Aktív' else 'bad' }}">{{ row.status }}</span>
+          </td>
+          <td class="num">
+            <a class="btn small" href="/receipts/{{ row.receipt_id }}">Nyugta</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="empty">Nincs a szűrésnek megfelelő tétel.</p>
+  {% endif %}
+</div>
+
+<p class="hint" style="margin-top:12px;">
+  A besorolás szabályalapú: a nyugtán szereplő rövidített terméknév alapján
+  következtet. A tényleges garancia a csomagoláson/garancialevélen szereplő
+  feltételek szerint alakulhat.
+</p>
+{% endblock %}

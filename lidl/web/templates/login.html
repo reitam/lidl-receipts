@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Belépés · Lidl Plus{% endblock %}
+
+{% block content %}
+<div style="max-width:420px;margin:40px auto;">
+  <h1>Belépés</h1>
+  <p class="sub">Ez a felület jelszóval védett.</p>
+
+  {% if error %}<div class="flash err">{{ error }}</div>{% endif %}
+
+  <form class="card" method="post" action="/login">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="next" value="{{ next }}">
+    <div class="field">
+      <label for="password">Jelszó</label>
+      <input id="password" type="password" name="password" autocomplete="current-password" autofocus>
+    </div>
+    <div style="margin-top:14px;">
+      <button class="btn primary" type="submit">Belépés</button>
+    </div>
+  </form>
+
+  <p class="hint" style="margin-top:12px;">
+    A jelszó a <code>LIDL_UI_PASSWORD</code> környezeti változóból jön.
+  </p>
+</div>
+{% endblock %}

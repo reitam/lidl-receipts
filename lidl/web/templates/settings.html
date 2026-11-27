@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Beállítások · Lidl Plus{% endblock %}
+
+{% block content %}
+<h1>Beállítások</h1>
+<p class="sub">Ütemezés, értesítés és a működés áttekintése.</p>
+
+<section class="cards two" style="align-items:start;">
+  <form class="card" method="post" action="/settings/schedule">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <h2>Automatikus frissítés</h2>
+    <p class="hint" style="font-size:.87rem;">
+      A megadott napokon és időpontban lefut a teljes frissítés
+      (letöltés + PDF + jegyzék + garancia).
+    </p>
+
+    <div class="checkline" style="margin:12px 0;">
+      <input id="schedule_enabled" type="checkbox" name="schedule_enabled" value="1" {% if cfg.schedule.enabled %}checked{% endif %}>
+      <label for="schedule_enabled">Ütemezés bekapcsolva</label>
+    </div>
+
+    <div class="field" style="max-width:160px;">
+      <label for="schedule_time">Indulás</label>
+      <input id="schedule_time" type="time" name="schedule_time" value="{{ cfg.schedule.time }}">
+    </div>
+
+    <div class="field" style="margin-top:12px;">
+      <label>Napok</label>
+      <div class="checks">
+        {% for name in weekdays %}
+        <label>
+          <input type="checkbox" name="weekday" value="{{ loop.index0 }}" {% if loop.index0 in cfg.schedule.weekdays %}checked{% endif %}>
+          {{ name }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <p class="hint" style="margin-top:10px;">
+      Ha a konténer a beállított időpont után indul újra, legfeljebb 6 órán
+      belül pótolja a kimaradt futást.
+    </p>
+
+    <div style="margin-top:14px;">
+      <button class="btn primary" type="submit">Mentés</button>
+      {% if next_run %}<span class="hint" style="margin-left:8px;">Következő: {{ next_run|dt }}</span>{% endif %}
+    </div>
+  </form>
+
+  <form class="card" method="post" action="/settings/ntfy">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <h2>ntfy értesítés</h2>
+    <p class="hint" style="font-size:.87rem;">
+      A HPReiTam-on futó ntfy szerverrel működik. Az üzenet a sikeres
+      ütemezett futásról és minden hibáról szól.
+    </p>
+
+    <div class="checkline" style="margin:12px 0;">
+      <input id="ntfy_enabled" type="checkbox" name="ntfy_enabled" value="1" {% if cfg.ntfy.enabled %}checked{% endif %}>
+      <label for="ntfy_enabled">Értesítés bekapcsolva</label>
+    </div>
+
+    <div class="field">
+      <label for="ntfy_url">Szerver URL</label>
+      <input id="ntfy_url" type="text" name="ntfy_url" value="{{ cfg.ntfy.url }}" placeholder="http://ntfy.example.com:8080">
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+      <label for="ntfy_topic">Topic</label>
+      <input id="ntfy_topic" type="text" name="ntfy_topic" value="{{ cfg.ntfy.topic }}" placeholder="lidl">
+    </div>
+
+    <div class="field" style="margin-top:10px;">
+      <label for="ntfy_token">Hozzáférési token (opcionális)</label>
+      <input id="ntfy_token" type="password" name="ntfy_token" value="{{ cfg.ntfy.token }}" autocomplete="off">
+    </div>
+
+    <div class="checkline" style="margin-top:10px;">
+      <input id="ntfy_on_manual" type="checkbox" name="ntfy_on_manual" value="1" {% if cfg.ntfy.on_manual %}checked{% endif %}>
+      <label for="ntfy_on_manual">Kézi futtatásról is értesítsen</label>
+    </div>
+
+    <div class="btn-row" style="margin-top:14px;">
+      <button class="btn primary" type="submit">Mentés</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Rendszer</h2></div>
+  <dl class="meta">
+    <dt>Verzió</dt><dd>v{{ version }}</dd>
+    <dt>Ország</dt><dd>{{ country }}</dd>
+    <dt>Lidl token</dt><dd>{{ 'van' if token_exists else 'nincs' }} <a class="hint" href="/auth">(kezelés)</a></dd>
+    <dt>Adatmappa</dt><dd class="mono">{{ data_dir }}</dd>
+    <dt>Kimenet</dt><dd class="mono">{{ output_dir }}</dd>
+    <dt>Jelszó</dt><dd>{{ 'beállítva (LIDL_UI_PASSWORD)' if password_set else 'nincs beállítva – csak a hálózat védi (Tailscale)' }}</dd>
+    <dt>Lidl app verzió</dt><dd>{{ cfg.app_version or 'automatikus (alapértelmezett)' }}</dd>
+  </dl>
+  <p class="hint" style="margin-top:12px;">
+    A token és a nyugták a volume-on élnek. A konténer újraindítása nem
+    jelent kijelentkezést, és a mentés a szokásos Backrest tervvel megy.
+  </p>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>ntfy teszt</h2></div>
+  <p class="hint" style="margin-top:0;">A mentett beállításokkal küld egy próbaüzenetet.</p>
+  <form method="post" action="/settings/test-ntfy" style="margin-top:10px;">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="btn small" type="submit">Tesztértesítés küldése</button>
+  </form>
+</section>
+{% endblock %}

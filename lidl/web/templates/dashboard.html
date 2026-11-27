@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% set status_labels = {'running': 'Fut', 'done': 'Kész', 'error': 'Hiba', 'stopped': 'Leállítva'} %}
+{% set descriptions = {
+  'all': 'Letöltés, PDF-render, jegyzék és garancia egyben.',
+  'fetch': 'Csak az új nyugtákat tölti le a Lidl API-ból.',
+  'render': 'A hiányzó PDF-eket készíti el.',
+  'export': 'Excel/CSV jegyzék a nyugtákról és tételekről.',
+  'warranty': '3 éves műszaki/szerszám garancia kimutatás.',
+} %}
+{% block title %}Áttekintés · Lidl Plus{% endblock %}
+
+{% block content %}
+<h1>Áttekintés</h1>
+<p class="sub">Letöltés, PDF-generálás, jegyzékek és kimutatások egy helyen.</p>
+
+{% if not stats.token %}
+<div class="flash err" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+  <span><b>Nincs érvényes Lidl token.</b> A letöltés nem indul el, amíg nincs bejelentkezés.</span>
+  <a class="btn small" href="/auth">Bejelentkezés</a>
+</div>
+{% endif %}
+
+<section class="cards five">
+  <div class="card stat">
+    <span>Bejelentkezés</span>
+    <strong class="{{ 'ok' if stats.token else 'bad' }}">{{ 'Aktív' if stats.token else 'Nincs' }}</strong>
+    <small><a href="/auth">Token kezelése</a></small>
+  </div>
+  <div class="card stat">
+    <span>Nyugták</span>
+    <strong>{{ stats.receipts }}</strong>
+    <small>{{ stats.date_from }} – {{ stats.date_to }}</small>
+  </div>
+  <div class="card stat">
+    <span>Összes költés</span>
+    <strong>{{ stats.total|ft }}</strong>
+    <small>{{ stats.yearly|length }} év</small>
+  </div>
+  <div class="card stat">
+    <span>PDF-ek</span>
+    <strong>{{ stats.pdfs }}</strong>
+    <small>papír-hű másolat</small>
+  </div>
+  <div class="card stat">
+    <span>Utolsó letöltés</span>
+    <strong style="font-size:.98rem;">{{ stats.last_fetch|ts }}</strong>
+    <small>{{ 'Ütemezve' if settings.schedule.enabled else 'Kézi' }}</small>
+  </div>
+</section>
+
+{% if job %}
+<section class="panel console" id="job-panel" data-job="{{ job.id }}" data-status="{{ job.status }}">
+  <div class="console-head">
+    <h2>
+      {{ job.label }}
+      <span class="badge {{ 'ok' if job.status == 'done' else 'bad' if job.status == 'error' else 'run' }}">
+        {{ status_labels.get(job.status, job.status) }}
+      </span>
+    </h2>
+    <div class="btn-row">
+      <a class="btn small" href="/jobs/{{ job.id }}/log" target="_blank" rel="noopener">Nyers napló</a>
+      {% if job.status == 'running' %}
+      <form method="post" action="/jobs/{{ job.id }}/stop" class="inline-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn small danger" type="submit">Leállítás</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+  <pre id="job-log">{{ job.output }}</pre>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head">
+    <div>
+      <h2>Műveletek</h2>
+      <p class="hint">Egyszerre egy feladat fut. A műveletek a háttérben dolgoznak.</p>
+    </div>
+    {% if current_job %}
+    <span class="badge run">Fut: {{ current_job.label }}</span>
+    {% endif %}
+  </div>
+
+  <div class="actions-grid">
+    {% for key in ['all', 'fetch'] %}
+    <form method="post" action="/jobs/start" class="action-card">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="{{ key }}">
+      <h3>{{ actions[key].label }}</h3>
+      <p>{{ descriptions.get(key, '') }}</p>
+      <button class="btn {{ 'accent' if key == 'all' else 'primary' }}" {% if current_job %}disabled{% endif %}>Indítás</button>
+    </form>
+    {% endfor %}
+
+    {% for key in ['render', 'export', 'warranty'] %}
+    <form method="post" action="/jobs/start" class="action-card">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="action" value="{{ key }}">
+      <h3>{{ actions[key].label }}</h3>
+      <p>{{ descriptions.get(key, '') }}</p>
+      <button class="btn" {% if current_job %}disabled{% endif %}>Indítás</button>
+    </form>
+    {% endfor %}
+
+  </div>
+</section>
+
+<section class="cards two" style="margin-top:16px;">
+  <div class="card">
+    <h2>Ütemezés</h2>
+    {% if settings.schedule.enabled %}
+      <p class="hint" style="font-size:.9rem;margin:6px 0 0;">
+        Következő futás: <b>{{ next_run|dt }}</b><br>
+        Napi időpont: {{ settings.schedule.time }}
+      </p>
+    {% else %}
+      <p class="hint" style="font-size:.9rem;margin:6px 0 0;">Az automatikus frissítés ki van kapcsolva.</p>
+    {% endif %}
+    <div class="btn-row" style="margin-top:10px;">
+      <a class="btn small" href="/settings">Ütemezés beállítása</a>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Értesítés (ntfy)</h2>
+    <p class="hint" style="font-size:.9rem;margin:6px 0 0;">
+      {{ 'Bekapcsolva' if settings.ntfy.enabled else 'Kikapcsolva' }}
+      {% if settings.ntfy.enabled %}· {{ settings.ntfy.url }}/{{ settings.ntfy.topic }}{% endif %}
+    </p>
+    <div class="btn-row" style="margin-top:10px;">
+      <a class="btn small" href="/settings">Értesítés beállítása</a>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Legutóbbi nyugták</h2>
+    <a class="btn small" href="/receipts">Összes nyugta</a>
+  </div>
+  {% if recent %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Dátum</th><th>Bolt</th><th class="num">Tételek</th><th class="num">Összeg</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for row in recent %}
+        <tr>
+          <td><a href="/receipts/{{ row.receipt.id }}">{{ row.moment|dt }}</a></td>
+          <td>{{ row.store }}</td>
+          <td class="num">{{ row.item_count }}</td>
+          <td class="num">{{ row.total|ft }}</td>
+          <td class="num">
+            {% if row.pdf.is_file() %}
+            <a class="btn small" href="/receipts/{{ row.receipt.id }}/pdf">PDF</a>
+            {% else %}
+            <span class="badge muted">nincs PDF</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <h2>Még nincs letöltött nyugta</h2>
+    <p>Indítsd el a letöltést, majd jelentkezz be a Lidl fiókba, ha szükséges.</p>
+    <a class="btn primary" href="/auth">Lidl bejelentkezés</a>
+  </div>
+  {% endif %}
+</section>
+
+{% if stats.yearly %}
+<section class="panel">
+  <div class="panel-head"><h2>Éves összesítés</h2></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Év</th><th class="num">Nyugták</th><th class="num">Összeg</th></tr></thead>
+      <tbody>
+        {% for row in stats.yearly %}
+        <tr>
+          <td>{{ row.year }}</td>
+          <td class="num">{{ row.count }}</td>
+          <td class="num">{{ row.total|ft }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if job is defined and job %}
+<script>
+(function () {
+  const panel = document.getElementById('job-panel');
+  if (!panel) return;
+  const jobId = panel.dataset.job;
+  const log = document.getElementById('job-log');
+  const status = panel.dataset.status;
+  if (status !== 'running') return;
+  let done = false;
+  async function poll() {
+    try {
+      const response = await fetch('/jobs/' + jobId + '.json', { cache: 'no-store' });
+      if (!response.ok) { location.reload(); return; }
+      const data = await response.json();
+      log.textContent = data.output || 'Indul…';
+      log.scrollTop = log.scrollHeight;
+      if (data.status !== 'running') {
+        if (!done) { done = true; setTimeout(() => location.reload(), 700); }
+        return;
+      }
+    } catch (error) {
+      log.textContent += '\n[Kapcsolódási hiba: ' + error.message + ']';
+    }
+    setTimeout(poll, 1000);
+  }
+  setTimeout(poll, 800);
+})();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,3 @@
+-r requirements.txt
+# Csak a tesztekhez (FastAPI TestClient):
+httpx>=0.27

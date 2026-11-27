@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Lidl bejelentkezés · Lidl Plus{% endblock %}
+
+{% block content %}
+<h1>Lidl fiók</h1>
+<p class="sub">A token általában hetekig/hónapokig érvényes. Ha lejárt, itt újrakérhető.</p>
+
+{% if error %}
+<div class="flash err">{{ error }}</div>
+{% endif %}
+
+<section class="cards two" style="align-items:start;">
+  <div class="card">
+    <h2>Állapot</h2>
+    <p style="margin:10px 0 0;">
+      {% if token_exists %}
+      <span class="badge ok">Token mentve</span>
+      <span class="hint">A letöltés működik.</span>
+      {% else %}
+      <span class="badge bad">Nincs token</span>
+      <span class="hint">Először be kell jelentkezni.</span>
+      {% endif %}
+    </p>
+    <p class="hint" style="margin-top:12px;">
+      A jelszó és az SMS-kód kizárólag a Lidl saját bejelentkező oldalán
+      kerül felhasználásra; ez az eszköz csak a visszakapott kódot váltja
+      tokenre.
+    </p>
+    {% if token_exists %}
+    <form method="post" action="/auth/check" style="margin-top:12px;">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn small" type="submit">Token ellenőrzése</button>
+      <span class="hint">Frissíti a tokent; a régi azonnal érvénytelenné válik.</span>
+    </form>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    {% if flow %}
+    <h2>Bejelentkezés folyamatban</h2>
+    <ol style="padding-left:18px; font-size:.9rem; margin:10px 0;">
+      <li>Nyisd meg az alábbi URL-t a saját böngésződben (ott, ahol be vagy
+        jelentkezve a Lidl-fiókba).</li>
+      <li>Jelentkezz be (telefonszám/e-mail + jelszó + SMS-kód).</li>
+      <li>A böngésző végül egy hibás oldalt mutat:
+        <span class="mono">com.lidlplus.app://callback?...</span> – ez normális.</li>
+      <li>Másold ki a <b>teljes URL-t</b> a címsorból, és illeszd be ide.</li>
+    </ol>
+    <div class="field">
+      <label for="auth-url">Bejelentkező URL</label>
+      <textarea id="auth-url" rows="3" readonly style="width:100%;">{{ flow.url }}</textarea>
+    </div>
+    <div class="btn-row" style="margin-top:8px;">
+      <button class="btn small" type="button" id="copy-url">URL másolása</button>
+      <a class="btn small" href="{{ flow.url }}" target="_blank" rel="noopener">Megnyitás</a>
+      <span class="hint">Lejár: {{ flow.expires_in // 60 }} perc</span>
+    </div>
+
+    <form method="post" action="/auth/finish" style="margin-top:16px;">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <div class="field">
+        <label for="pasted">Callback URL vagy kód</label>
+        <textarea id="pasted" name="pasted" rows="2" placeholder="com.lidlplus.app://callback?code=..." style="width:100%;">{{ pasted or '' }}</textarea>
+      </div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn primary" type="submit">Bejelentkezés befejezése</button>
+      </div>
+    </form>
+
+    <form method="post" action="/auth/cancel" style="margin-top:8px;">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn small" type="submit">Mégse</button>
+    </form>
+    {% else %}
+    <h2>Új bejelentkezés</h2>
+    <p class="hint" style="margin-top:10px;">
+      Indítsd el a folyamatot, majd nyisd meg a kapott URL-t a saját
+      böngésződben. A callback URL-t ide kell visszailleszteni.
+    </p>
+    <form method="post" action="/auth/start" style="margin-top:14px;">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="btn primary" type="submit">Bejelentkezés indítása</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>Ha a felület nem elérhető</h2></div>
+  <p class="hint" style="margin:0;">
+    Konténerben a parancssori mód is működik:
+    <code>docker compose exec -it lidl python -m lidl login --manual</code>
+    – kiírja az URL-t, majd a beillesztett callback URL-lel fejezi be.
+  </p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if flow %}
+<script>
+document.getElementById('copy-url')?.addEventListener('click', async () => {
+  const field = document.getElementById('auth-url');
+  try {
+    await navigator.clipboard.writeText(field.value);
+    alert('Az URL a vágólapon van.');
+  } catch (error) {
+    field.select();
+    document.execCommand('copy');
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

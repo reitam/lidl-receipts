@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Lidl Plus e-nyugták{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+</head>
+<body>
+<header>
+  <div class="wrap header-inner">
+    <div class="brand">
+      <a href="/">Lidl Plus</a>
+      <span>e-nyugta archívum</span>
+    </div>
+    <nav>
+      <a href="/" class="{% if active == 'dashboard' %}active{% endif %}">Áttekintés</a>
+      <a href="/receipts" class="{% if active == 'receipts' %}active{% endif %}">Nyugták</a>
+      <a href="/reports" class="{% if active == 'reports' %}active{% endif %}">Kimutatások</a>
+      <a href="/jobs" class="{% if active == 'jobs' %}active{% endif %}">Futások</a>
+      <a href="/auth" class="{% if active == 'auth' %}active{% endif %}">Lidl fiók</a>
+      <a href="/settings" class="{% if active == 'settings' %}active{% endif %}">Beállítások</a>
+      <span class="badge {{ 'ok' if token_exists else 'bad' }}">
+        {{ 'Bejelentkezve' if token_exists else 'Nincs token' }}
+      </span>
+      {% if auth_enabled %}
+      <form method="post" action="/logout" class="inline-form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="linklike" type="submit">Kilépés</button>
+      </form>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  {% if msg %}
+  <div class="flash {{ kind if kind in ('ok', 'err', 'info') else 'info' }}">{{ msg }}</div>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="wrap">
+  Lidl Plus e-nyugta archívum · v{{ version }} · {{ country }}
+  · nem hivatalos eszköz, a token és a nyugták helyben maradnak.
+</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

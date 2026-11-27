@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ store }} · {{ moment|dt("%Y-%m-%d") }} · Lidl Plus{% endblock %}
+
+{% block content %}
+<p class="hint" style="margin-bottom:6px;"><a href="/receipts">← Vissza a nyugtákhoz</a></p>
+<h1>{{ store }}</h1>
+<p class="sub">{{ moment|dt }} · {{ total|ft }}</p>
+
+<div class="cards two" style="align-items:start;">
+  <div class="card">
+    <h2>Adatok</h2>
+    <dl class="meta" style="margin-top:10px;">
+      <dt>Dátum</dt><dd>{{ moment|dt }}</dd>
+      <dt>Bolt</dt><dd>{{ store }}</dd>
+      <dt>Nyugta ID</dt><dd class="mono">{{ receipt.id }}</dd>
+      {% if receipt.barCode %}<dt>Vonalkód</dt><dd class="mono">{{ receipt.barCode }}</dd>{% endif %}
+      <dt>Összeg</dt><dd><b>{{ total|ft }}</b></dd>
+      <dt>Tételek</dt><dd>{{ items|length }} sor</dd>
+    </dl>
+    <div class="btn-row" style="margin-top:14px;">
+      {% if pdf.is_file() %}
+      <a class="btn primary" href="/receipts/{{ receipt.id }}/pdf">PDF letöltése</a>
+      {% else %}
+      <span class="badge muted">PDF még nincs</span>
+      {% endif %}
+      {% if jpg.is_file() %}
+      <a class="btn" href="/receipts/{{ receipt.id }}/jpg">JPG</a>
+      {% endif %}
+      <a class="btn" href="/receipts/{{ receipt.id }}/json">Nyers JSON</a>
+      <a class="btn" href="/receipts/{{ receipt.id }}/preview" target="_blank" rel="noopener">Előnézet</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Tételek</h2>
+    {% if items %}
+    <div class="table-wrap" style="margin-top:8px;">
+      <table class="receipt-items">
+        <thead>
+          <tr><th>Termék</th><th class="num">Menny.</th><th class="num">Egységár</th><th class="num">Összeg</th></tr>
+        </thead>
+        <tbody>
+          {% for item in items %}
+          <tr>
+            <td>{{ item.name }}{% if item.art_id %} <span class="hint mono">{{ item.art_id }}</span>{% endif %}</td>
+            <td class="num">{{ '%g'|format(item.quantity) }}</td>
+            <td class="num">{{ item.unit_price|ft }}</td>
+            <td class="num">{{ item.line_total|ft }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th colspan="3">Tételek összege</th>
+            <th class="num">{{ items|sum(attribute='line_total')|ft }}</th>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p class="hint" style="margin-top:8px;">
+      A nyugta végösszege a mérvadó: a kosár-szintű kedvezmények miatt a tételek
+      összege eltérhet tőle.
+    </p>
+    {% else %}
+    <p class="empty">Ehhez a nyugtához nincs tételadat (a Lidl nem adott HTML-t).</p>
+    {% endif %}
+  </div>
+</div>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>Nyugta előnézete</h2>
+    <a class="btn small" href="/receipts/{{ receipt.id }}/preview" target="_blank" rel="noopener">Megnyitás új lapon</a>
+  </div>
+  <iframe class="receipt-frame" src="/receipts/{{ receipt.id }}/preview" title="Nyugta előnézet" loading="lazy"></iframe>
+</section>
+{% endblock %}
