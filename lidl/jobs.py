@@ -7,7 +7,6 @@ hívásokat használja, csak itt egy szál figyeli a kimenetet, a napló pedig a
 
 from __future__ import annotations
 
-import importlib.util
 import json
 import os
 import secrets
@@ -54,23 +53,6 @@ ACTIONS: dict[str, dict] = {
         "args": ["all", "--no-auto-login"],
     },
 }
-
-
-def _module_available(name: str) -> bool:
-    try:
-        return importlib.util.find_spec(name) is not None
-    except (ImportError, ValueError):
-        return False
-
-
-# A borkimutatás opcionális: a publikus buildből kimarad, ott nem is
-# jelenik meg műveletként.
-WINE_AVAILABLE = _module_available("lidl.wine")
-if WINE_AVAILABLE:
-    ACTIONS["wine"] = {
-        "label": "Bor kimutatás",
-        "args": ["wine"],
-    }
 
 
 @dataclass
@@ -127,14 +109,6 @@ class Job:
         if include_output:
             payload["output"] = self.output
         return payload
-
-
-def _validate_year(year: object) -> int | None:
-    try:
-        value = int(str(year))
-    except (TypeError, ValueError):
-        return None
-    return value if 2000 <= value <= 2100 else None
 
 
 class JobManager:
@@ -243,27 +217,20 @@ class JobManager:
         return job.output
 
     # -- indítás / leállítás -------------------------------------------
-    def build_command(self, action: str, year: object = None) -> list[str] | None:
+    def build_command(self, action: str) -> list[str] | None:
         spec = ACTIONS.get(action)
         if not spec:
             return None
         args = list(spec["args"])
-        if action == "wine":
-            value = _validate_year(year or datetime.now().year)
-            if value is None:
-                return None
-            args.extend(["--year", str(value)])
         return [sys.executable, "-u", "-m", "lidl", *args]
 
-    def start(
-        self, action: str, year: object = None, source: str = "manual"
-    ) -> tuple[Job | None, str | None]:
+    def start(self, action: str, source: str = "manual") -> tuple[Job | None, str | None]:
         spec = ACTIONS.get(action)
         if spec is None:
             return None, "Ismeretlen művelet."
-        command = self.build_command(action, year)
+        command = self.build_command(action)
         if command is None:
-            return None, "Érvénytelen évszám (2000–2100 között lehet)."
+            return None, "Érvénytelen művelet."
         with self._lock:
             running = self.current()
             if running is not None:

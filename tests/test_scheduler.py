@@ -30,7 +30,7 @@ class FakeManager:
         self.calls: list[tuple[str, str]] = []
         self.busy = False
 
-    def start(self, action: str, year=None, source: str = "manual"):
+    def start(self, action: str, source: str = "manual"):
         if self.busy:
             return None, "Már fut egy feladat."
         self.calls.append((action, source))

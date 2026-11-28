@@ -27,7 +27,7 @@ from ..notify import send as send_notify
 from ..receipt import receipt_datetime, receipt_total
 from ..receipt import store_name as receipt_store_name
 from ..scheduler import Scheduler, next_run_at
-from .data import WINE_AVAILABLE, ReceiptStore, format_amount
+from .data import ReceiptStore, format_amount
 from .loginflow import LoginFlowStore
 from .security import SESSION_COOKIE, Auth
 
@@ -91,7 +91,6 @@ def create_app(
             "country": store.country,
             "data_dir": store.data_dir,
             "output_dir": store.output_dir,
-            "wine_available": WINE_AVAILABLE,
             "token_exists": store.token_exists(),
             "current_job": manager.current(),
             "next_run": next_run_at(settings),
@@ -397,11 +396,6 @@ def create_app(
         warranty = store.warranty_rows()
         active = [row for row in warranty if row["status"] == "Aktív"]
         files = store.report_paths()
-        wine_years = []
-        if WINE_AVAILABLE:
-            for year in store.wine_years():
-                path = store.wine_report_path(year)
-                wine_years.append({"year": year, "exists": path.is_file()})
         return page(
             request,
             "reports.html",
@@ -411,7 +405,6 @@ def create_app(
             warranty_value=sum(row["price"] for row in active),
             warranty_expired=len(warranty) - len(active),
             files={key: path.is_file() for key, path in files.items()},
-            wine_years=wine_years,
             stats=store.stats(),
         )
 
@@ -444,36 +437,6 @@ def create_app(
             q=q,
         )
 
-    @app.get("/reports/wine", response_class=HTMLResponse)
-    def wine_page(request: Request, year: str = ""):
-        if not WINE_AVAILABLE:
-            return page(
-                request,
-                "error.html",
-                status_code=404,
-                title="A borkimutatás nem elérhető",
-                message="Ez a build a borkimutatás modul nélkül készült.",
-            )
-        years = store.wine_years()
-        try:
-            year_value = int(year) if year else years[0]
-        except (TypeError, ValueError):
-            year_value = years[0]
-        rows = store.wine_rows(year_value)
-        summary = store.wine_summary(year_value)
-        return page(
-            request,
-            "wine.html",
-            active="reports",
-            rows=rows,
-            summary=summary,
-            year=year_value,
-            years=years,
-            bottles=sum(row["bottles"] for row in summary),
-            total=sum(row["total"] for row in summary),
-            report_exists=store.wine_report_path(year_value).is_file(),
-        )
-
     # -- fájlletöltések ------------------------------------------------
     @app.get("/files/{kind}")
     def download(kind: str, request: Request):
@@ -486,26 +449,16 @@ def create_app(
         media = "application/pdf" if path.suffix == ".pdf" else None
         return FileResponse(path, media_type=media, filename=path.name)
 
-    @app.get("/files/wine/{year}")
-    def download_wine(year: int):
-        if not WINE_AVAILABLE:
-            return JSONResponse({"error": "A borkimutatás nem elérhető."}, status_code=404)
-        path = store.wine_report_path(year)
-        if not path.is_file():
-            return JSONResponse({"error": "A fájl még nem készült el."}, status_code=404)
-        return FileResponse(path, filename=path.name)
-
     # -- feladatok -----------------------------------------------------
     @app.post("/jobs/start")
     def job_start(
         request: Request,
         action: str = Form(""),
-        year: str = Form(""),
         csrf: str = Form(""),
     ):
         if not auth.csrf_ok(csrf):
             return csrf_failed(request)
-        job, error = manager.start(action, year=year or None, source="manual")
+        job, error = manager.start(action, source="manual")
         if job is None:
             return flash("/", error or "Nem sikerült elindítani.", "err")
         return flash("/", f"Elindult: {job.label}.", "ok", job=job.id)

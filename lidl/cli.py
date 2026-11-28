@@ -16,13 +16,6 @@ from .export import export_index
 from .receipt import enrich_receipts, receipt_datetime, receipt_total
 from .render import render_receipts
 from .warranty import build_warranty_rows, export_warranty_excel
-try:  # a borkimutatás opcionális (a publikus buildből kimarad)
-    from .wine import build_wine_rows, export_wine_excel, monthly_summary
-
-    WINE_AVAILABLE = True
-except ImportError:  # pragma: no cover
-    build_wine_rows = export_wine_excel = monthly_summary = None
-    WINE_AVAILABLE = False
 
 ROOT = config.ROOT
 DATA_DIR = config.DATA_DIR
@@ -190,38 +183,6 @@ def cmd_warranty(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_wine(args: argparse.Namespace) -> int:
-    if not WINE_AVAILABLE:
-        print("A borkimutatás ebben a buildben nem elérhető.")
-        return 1
-    receipts = load_receipts(args.country)
-    if not receipts:
-        print("Nincs letöltött nyugta. Futtasd előbb: python -m lidl fetch")
-        return 1
-    rows = build_wine_rows(receipts, args.year, OUTPUT_DIR)
-    summary = monthly_summary(rows, args.year)
-    output = getattr(args, "output", None) or (
-        OUTPUT_DIR / f"bor_kimutatas_{args.year}.xlsx"
-    )
-    requested = Path(output)
-    path = export_wine_excel(rows, args.year, requested)
-    print(f"Borvásárlások {args.year} – havi bontás:")
-    print(f"  {'Hónap':<9} {'Tételek':>8} {'Palack':>8} {'Összeg':>12}")
-    for row in summary:
-        print(
-            f"  {row['month']:<9} {row['items']:>8} "
-            f"{row['bottles']:>8g} {row['total']:>10,.0f} Ft".replace(",", " ")
-        )
-    total = sum(row["total"] for row in summary)
-    bottles = sum(row["bottles"] for row in summary)
-    print(f"  {'Összesen':<9} {sum(r['items'] for r in summary):>8} "
-          f"{bottles:>8g} {total:>10,.0f} Ft".replace(",", " "))
-    print(f"\nExcel: {path}")
-    if path != requested:
-        print("FIGYELEM: a fő Excel zárolva volt; időbélyeges néven mentettem.")
-    return 0
-
-
 def cmd_all(args: argparse.Namespace) -> int:
     require_login(args.country)
     fetch_code = cmd_fetch(args)
@@ -339,24 +300,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="A kimeneti Excel útvonala (alap: nyugtak/muszaki_garancia_HU.xlsx)",
     )
     warranty.set_defaults(func=cmd_warranty)
-
-    if WINE_AVAILABLE:
-        wine = subparsers.add_parser(
-            "wine", help="Borvásárlások éves/havi kimutatása Excelben"
-        )
-        wine.add_argument(
-            "--year",
-            type=int,
-            default=datetime.now().year,
-            help="A kimutatás éve (alap: aktuális év)",
-        )
-        wine.add_argument(
-            "--output",
-            type=Path,
-            default=None,
-            help="A kimeneti Excel útvonala (alap: nyugtak/bor_kimutatas_<év>.xlsx)",
-        )
-        wine.set_defaults(func=cmd_wine)
 
     all_cmd = subparsers.add_parser(
         "all", help="Letöltés + renderelés + jegyzék + garancia kimutatás"

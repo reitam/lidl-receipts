@@ -18,15 +18,6 @@ from ..receipt import (
 from ..render import build_page, pdf_path_for, receipt_year
 from ..warranty import build_warranty_rows
 
-try:  # a borkimutatás opcionális modul (a publikus buildből kimarad)
-    from ..wine import build_wine_rows, monthly_summary
-
-    WINE_AVAILABLE = True
-except ImportError:  # pragma: no cover - csak a bor nélküli buildben
-    build_wine_rows = None
-    monthly_summary = None
-    WINE_AVAILABLE = False
-
 
 def fold(value: object) -> str:
     """Ékezet- és kisbetű-független összehasonlításhoz."""
@@ -65,7 +56,6 @@ class ReceiptStore:
         self._items: dict[str, list[dict]] = {}
         self._warranty_signature = None
         self._warranty_rows: list[dict] = []
-        self._wine_cache: dict[int, list[dict]] = {}
 
     # -- betöltés ------------------------------------------------------
     @property
@@ -99,7 +89,6 @@ class ReceiptStore:
             self._by_id = {str(item.get("id") or ""): item for item in receipts}
             self._items.clear()
             self._warranty_signature = None
-            self._wine_cache.clear()
             self._signature = signature
 
     @property
@@ -211,23 +200,6 @@ class ReceiptStore:
             self._warranty_signature = self._signature
             return rows
 
-    def wine_rows(self, year: int) -> list[dict]:
-        if not WINE_AVAILABLE:
-            return []
-        self.refresh()
-        with self._lock:
-            if year not in self._wine_cache:
-                self._wine_cache[year] = build_wine_rows(self.receipts, year, self.output_dir)
-            return self._wine_cache[year]
-
-    def wine_summary(self, year: int) -> list[dict]:
-        if not WINE_AVAILABLE:
-            return []
-        return monthly_summary(self.wine_rows(year), year)
-
-    def wine_years(self) -> list[int]:
-        return self.years() or [datetime.now().year]
-
     # -- fájlok --------------------------------------------------------
     def pdf_path(self, receipt: dict) -> Path:
         return pdf_path_for(receipt, self.output_dir)
@@ -247,9 +219,6 @@ class ReceiptStore:
             "items_csv": output / f"nyugtak_tetelek_{country}.csv",
             "warranty_xlsx": output / f"muszaki_garancia_{country}.xlsx",
         }
-
-    def wine_report_path(self, year: int) -> Path:
-        return self.output_dir / f"bor_kimutatas_{year}.xlsx"
 
     @staticmethod
     def receipt_year(receipt: dict) -> str:

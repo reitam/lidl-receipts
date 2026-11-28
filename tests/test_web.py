@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 from lidl.jobs import JobManager
 from lidl.web import app as web_app
 from lidl.web.app import create_app
-from lidl.web.data import WINE_AVAILABLE, ReceiptStore
+from lidl.web.data import ReceiptStore
 from lidl.web.loginflow import LoginFlowStore
 from lidl.web.security import Auth, SESSION_COOKIE
 
@@ -35,7 +35,7 @@ HTML = """<html><body><pre>
 </pre></body></html>"""
 
 
-HTML_WINE = """<html><body><pre>
+HTML_OTHER = """<html><body><pre>
 <span class="article" data-art-id="1234567" data-unit-price="1499,00" data-tax-type="C" data-art-description="BOR">BOR  1&nbsp;499  C00</span>
 </pre></body></html>"""
 
@@ -68,8 +68,8 @@ class WebTestCase(unittest.TestCase):
         (self.output_dir / "2024").mkdir(parents=True)
         self.receipts = [
             receipt("T1", "2024-06-17T10:58:11", 19489.0),
-            receipt("T2", "2024-11-28T09:00:00", 7999.0, "Siófok, Zamárdi utca", HTML_WINE),
-            receipt("T3", "2025-01-05T12:00:00", 1234.0, html=HTML_WINE),
+            receipt("T2", "2024-11-28T09:00:00", 7999.0, "Siófok, Zamárdi utca", HTML_OTHER),
+            receipt("T3", "2025-01-05T12:00:00", 1234.0, html=HTML_OTHER),
         ]
         for item in self.receipts:
             (receipts_dir / f"{item['id']}.json").write_text(
@@ -117,13 +117,7 @@ class WebTestCase(unittest.TestCase):
     # -- feladatkezelés ------------------------------------------------
     def test_job_validation_and_commands(self) -> None:
         self.assertIsNone(self.manager.build_command("nope"))
-        if WINE_AVAILABLE:
-            self.assertIsNone(self.manager.build_command("wine", 1000))
-            command = self.manager.build_command("wine", 2024)
-            self.assertIsNotNone(command)
-            self.assertEqual(command[-2:], ["--year", "2024"])
-        else:
-            self.assertIsNone(self.manager.build_command("wine", 2024))
+        self.assertIsNone(self.manager.build_command("wine"))
         job, error = self.manager.start("nope")
         self.assertIsNone(job)
         self.assertTrue(error)
@@ -209,8 +203,6 @@ class WebTestCase(unittest.TestCase):
             "/receipts/T1",
             "/receipts/T1/preview",
         ]
-        if WINE_AVAILABLE:
-            paths.append("/reports/wine")
         for path in paths:
             with self.subTest(path=path):
                 response = client.get(path)

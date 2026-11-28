@@ -1,6 +1,21 @@
+# Futtatási környezet
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
+.pytest_cache/
+
+# Személyes adatok és generált kimenetek
 data/
 nyugtak/
+
+# Titkok
 .env
+.env.*
+!.env.example
+
+# Egyéb
+*.log
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
